@@ -76,15 +76,16 @@ src/pages/  Overview, Transactions, Budgets, Reports, Settings
 
 ## Releasing an update
 
-Installed apps (1.3.0 and newer) check GitHub Releases of  a few seconds after start and every 4 hours, download a newer version in the background, then offer "Restart now" (or install on next quit). Settings → General shows the version and a "Check for updates" button.
+Installed apps (1.3.0 and newer) check GitHub Releases of `vidovicjan/budget` a few seconds after start and every 4 hours, download a newer version in the background, then offer "Restart now" (or install on next quit). Settings → General shows the version and a "Check for updates" button.
 
 **Automatic (recommended):** commit your changes, then run
 
-\
-> budget-tracker@1.3.0 ship
-> npm version patch -m "Release %s" && git push --follow-tags
-That bumps the version (1.3.0 → 1.3.1), commits, tags  and pushes. GitHub Actions () then builds the installer on Windows and publishes the release with the .exe, .blockmap and latest.yml, in about 5 minutes. Watch it under the repo's **Actions** tab. For a bigger jump use  (1.3.x → 1.4.0) and .
+```
+npm run ship
+```
 
-**By hand:** bump  in package.json, , then on GitHub create release  and upload , its  and .
+That bumps the version (1.3.0 → 1.3.1), commits, tags `v1.3.1` and pushes. GitHub Actions (`.github/workflows/release.yml`) then builds the installer on Windows and publishes the release with the .exe, .blockmap and latest.yml, in about 5 minutes. Watch it under the repo's **Actions** tab. For a bigger jump use `npm version minor` (1.3.x → 1.4.0) and then `git push --follow-tags`.
+
+**By hand:** bump `version` in package.json, run `npm run dist`, then on GitHub create release `vX.Y.Z` and upload `Budget-Tracker-Setup-X.Y.Z.exe`, its `.blockmap` and `latest.yml`.
 
 Pushing code without a new tag never updates anyone. The repo must stay public, otherwise installed apps can't download updates.
