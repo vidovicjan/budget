@@ -76,13 +76,15 @@ src/pages/  Overview, Transactions, Budgets, Reports, Settings
 
 ## Releasing an update
 
-Installed apps (1.3.0 and newer) check GitHub Releases of `vidovicjan/budget` a few seconds after start and every 4 hours, download a newer version in the background, then offer "Restart now" (or install on next quit). Settings → General shows the version and a "Check for updates" button.
+Installed apps (1.3.0 and newer) check GitHub Releases of  a few seconds after start and every 4 hours, download a newer version in the background, then offer "Restart now" (or install on next quit). Settings → General shows the version and a "Check for updates" button.
 
-1. Bump `version` in `package.json` (e.g. 1.3.0 → 1.3.1). Updates only happen when the number goes up.
-2. Build: `npm run dist` (or the `%TEMP%` output trick if `release\` is locked).
-3. On GitHub → Releases → *Draft a new release*, tag `v1.3.1`, and upload **all three** files:
-   `Budget-Tracker-Setup-1.3.1.exe`, `Budget-Tracker-Setup-1.3.1.exe.blockmap`, `latest.yml`. Publish it (not as a draft or pre-release).
+**Automatic (recommended):** commit your changes, then run
 
-Or automatically: set a GitHub token with `repo` scope (`$env:GH_TOKEN="..."` in PowerShell) and run `npm run release`; it builds and uploads to a draft release that you then publish.
+\
+> budget-tracker@1.3.0 ship
+> npm version patch -m "Release %s" && git push --follow-tags
+That bumps the version (1.3.0 → 1.3.1), commits, tags  and pushes. GitHub Actions () then builds the installer on Windows and publishes the release with the .exe, .blockmap and latest.yml, in about 5 minutes. Watch it under the repo's **Actions** tab. For a bigger jump use  (1.3.x → 1.4.0) and .
 
-The repo must stay public (or move releases to a separate public repo), otherwise installed apps can't download updates.
+**By hand:** bump  in package.json, , then on GitHub create release  and upload , its  and .
+
+Pushing code without a new tag never updates anyone. The repo must stay public, otherwise installed apps can't download updates.

@@ -14,7 +14,8 @@
     "build": "tsc --noEmit && vite build",
     "start": "npm run build && electron .",
     "dist": "npm run build && electron-builder --win",
-    "release": "npm run build && electron-builder --win --publish always"
+    "release": "npm run build && electron-builder --win --publish always",
+    "ship": "npm version patch -m \"Release %s\" && git push --follow-tags"
   },
   "build": {
     "appId": "com.budgettracker.desktop",
