@@ -8,8 +8,11 @@ import { daysInMonth, monthLabel, monthOf, monthShort, shortDate, todayISO } fro
 import { accountName, byDateDesc, categoryLookup, inMonth, totals, shade } from '../lib/data';
 import { Avatar } from '../components/People';
 import { money, txAmount } from '../lib/format';
+import type { Transaction, Transfer } from '../lib/types';
 
 const PAGE_SIZE = 10;
+
+type Row = { kind: 'tx'; x: Transaction } | { kind: 'tr'; x: Transfer };
 
 export function Transactions() {
   const { data } = useStore();
@@ -28,20 +31,32 @@ export function Transactions() {
 
   useEffect(() => setPage(1), [query, category, account, month]);
 
+  const monthTr = useMemo(() => data.transfers.filter((x) => monthOf(x.date) === month), [data.transfers, month]);
+
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return monthTx.filter((x) => {
-      if (category === 'none' ? cat(x.categoryId).missing === false : category !== 'all' && x.categoryId !== category) return false;
-      if (account !== 'all' && x.accountId !== account) return false;
-      if (!q) return true;
-      return (
-        x.description.toLowerCase().includes(q) ||
-        x.note.toLowerCase().includes(q) ||
-        x.amount.toFixed(2).includes(q.replace(/[^\d.]/g, '') || '\u0000')
-      );
-    });
+    const amountMatch = (n: number) => n.toFixed(2).includes(q.replace(/[^\d.]/g, '') || '\u0000');
+    const txRows: Row[] = monthTx
+      .filter((x) => {
+        if (category === 'transfer') return false;
+        if (category === 'none' ? cat(x.categoryId).missing === false : category !== 'all' && x.categoryId !== category) return false;
+        if (account !== 'all' && x.accountId !== account) return false;
+        if (!q) return true;
+        return x.description.toLowerCase().includes(q) || x.note.toLowerCase().includes(q) || amountMatch(x.amount);
+      })
+      .map((x) => ({ kind: 'tx', x }));
+    const trRows: Row[] = monthTr
+      .filter((x) => {
+        if (category !== 'all' && category !== 'transfer') return false;
+        if (account !== 'all' && x.from !== account && x.to !== account) return false;
+        if (!q) return true;
+        const text = `transfer ${accountName(data, x.from)} ${accountName(data, x.to)} ${x.note}`.toLowerCase();
+        return text.includes(q) || amountMatch(x.amount);
+      })
+      .map((x) => ({ kind: 'tr', x }));
+    return [...txRows, ...trRows].sort((a, b) => (a.x.date < b.x.date ? 1 : a.x.date > b.x.date ? -1 : b.x.created - a.x.created));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthTx, query, category, account, data.categories]);
+  }, [monthTx, monthTr, query, category, account, data.categories, data.accounts]);
 
   const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const current = Math.min(page, pages);
@@ -147,6 +162,7 @@ export function Transactions() {
               ))}
             </optgroup>
             <option value="none">Uncategorized</option>
+            <option value="transfer">Transfers between accounts</option>
           </SelectBox>
           <label htmlFor="f-account" className="sr-only">
             Account
@@ -162,7 +178,7 @@ export function Transactions() {
         </div>
 
         <div className="table-wrap">
-          <table className="data">
+          <table className="data tx-table">
             <thead>
               <tr>
                 <th scope="col">Date</th>
@@ -175,7 +191,44 @@ export function Transactions() {
               </tr>
             </thead>
             <tbody>
-              {shown.map((x) => {
+              {shown.map((row) => {
+                if (row.kind === 'tr') {
+                  const x = row.x;
+                  return (
+                    <tr key={x.id} className="clickable tx-transfer" onClick={() => ui.editTransfer(x)}>
+                      <td className="muted">{shortDate(x.date)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="desc-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            ui.editTransfer(x);
+                          }}
+                        >
+                          {x.note || 'Transfer'}
+                        </button>
+                      </td>
+                      <td>
+                        <span className="cat-chip transfer">
+                          <Icon name="swap" size={13} />
+                          Transfer
+                        </span>
+                      </td>
+                      <td className="muted">
+                        <span className="transfer-route-text">
+                          {accountName(data, x.from)}
+                          <Icon name="chevR" size={14} />
+                          {accountName(data, x.to)}
+                        </span>
+                      </td>
+                      <td className="num transfer-amt">
+                        {account === x.from ? money(-x.amount, true) : account === x.to ? money(x.amount, true) : money(x.amount)}
+                      </td>
+                    </tr>
+                  );
+                }
+                const x = row.x;
                 const c = cat(x.categoryId);
                 const income = x.type === 'income';
                 return (
@@ -220,7 +273,7 @@ export function Transactions() {
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={5} className="empty">
-                    {monthTx.length ? 'No transactions match your filters.' : `No transactions in ${monthLabel(month)}.`}
+                    {monthTx.length || monthTr.length ? 'No transactions match your filters.' : `No transactions in ${monthLabel(month)}.`}
                   </td>
                 </tr>
               )}

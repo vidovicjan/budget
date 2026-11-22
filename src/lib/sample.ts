@@ -114,6 +114,16 @@ export function sampleData(today = todayISO()): AppData {
     service('Password manager', 36, 'yearly', start(9, 14)),
   ];
 
+  // Savings: 2.5% interest paid monthly, plus a 200 transfer from Checking each month.
+  const savings = d.accounts.find((a) => a.name === 'Savings');
+  if (savings) {
+    savings.interest = { rate: 2.5, payout: 'monthly', since: `${addMonths(current, -11)}-01`, tax: 0 };
+    for (let m = 11; m >= 0; m--) {
+      const date = start(m, 2);
+      if (date <= today) d.transfers.push({ id: uid(), date, from: acc('Checking'), to: savings.id, amount: 200, note: 'Monthly savings', created: Date.now() + m });
+    }
+  }
+
   // Investments: a crypto account and a brokerage account with a few holdings (prices load live).
   const crypto = { id: uid(), name: 'Crypto', kind: 'investment' as const, openingBalance: 0 };
   const broker = { id: uid(), name: 'Brokerage', kind: 'investment' as const, openingBalance: 0 };

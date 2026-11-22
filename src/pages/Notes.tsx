@@ -5,6 +5,7 @@ import { PageHeader } from '../components/common';
 import { Icon } from '../components/Icon';
 import { uid } from '../lib/data';
 import type { Note } from '../lib/types';
+import { confirmDialog } from '../components/Confirm';
 
 const SAVE_DELAY = 400;
 
@@ -89,9 +90,9 @@ export function Notes() {
     window.setTimeout(() => titleRef.current?.focus(), 0);
   };
 
-  const remove = () => {
+  const remove = async () => {
     if (!current) return;
-    if ((current.title || current.body) && !window.confirm(`Delete "${displayTitle(current)}"? This can't be undone.`)) return;
+    if ((current.title || current.body) && !(await confirmDialog({ title: `Delete “${displayTitle(current)}”?`, message: 'This note can’t be recovered.', danger: true }))) return;
     window.clearTimeout(timer.current);
     const next = sorted.find((n) => n.id !== current.id) ?? null;
     draftRef.current = null;

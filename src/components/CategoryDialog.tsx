@@ -7,6 +7,9 @@ import { money, parseAmount, round2 } from '../lib/format';
 import { monthlyCost, nextPayment, scheduleLabel } from '../lib/services';
 import { mediumDate, todayISO } from '../lib/dates';
 import { Icon } from './Icon';
+import { confirmDialog } from './Confirm';
+
+const capital = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
 interface Props {
   cat: Category | null;
@@ -57,12 +60,12 @@ export function CategoryDialog({ cat, type, onClose, onSaved }: Props) {
     onClose();
   };
 
-  const remove = () => {
+  const remove = async () => {
     if (!cat) return;
     const parts = [];
     if (used) parts.push(`its ${used} transaction${used === 1 ? '' : 's'} will be kept as Uncategorized`);
     if (services.length) parts.push(`its ${services.length} service${services.length === 1 ? '' : 's'} will be removed`);
-    if (!window.confirm(`Delete "${cat.name}"?${parts.length ? ' ' + parts.join(' and ') + '.' : ''}`)) return;
+    if (!(await confirmDialog({ title: `Delete “${cat.name}”?`, message: parts.length ? capital(parts.join(' and ')) + '.' : 'This category will be removed.', danger: true }))) return;
     update((d) => ({
       ...d,
       categories: d.categories.filter((c) => c.id !== cat.id),
@@ -77,8 +80,8 @@ export function CategoryDialog({ cat, type, onClose, onSaved }: Props) {
     setEditing(null);
   };
 
-  const removeService = (s: Service) => {
-    if (!window.confirm(`Remove "${s.name}"? Payments already added stay in your transactions.`)) return;
+  const removeService = async (s: Service) => {
+    if (!(await confirmDialog({ title: `Remove “${s.name}”?`, message: 'Payments already added stay in your transactions.', confirmLabel: 'Remove', danger: true }))) return;
     setServices((list) => list.filter((x) => x.id !== s.id));
   };
 

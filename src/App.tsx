@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StoreProvider, useStore } from './store';
 import { UICtx, type Page, type UI } from './ui';
-import type { Category, Position, Transaction, TxType } from './lib/types';
+import type { Account, Category, Position, Transaction, Transfer, TxType } from './lib/types';
 import { Sidebar } from './components/Sidebar';
 import { TitleBar } from './components/TitleBar';
 import { UpdateBanner } from './components/UpdateBanner';
 import { TransactionDialog } from './components/TransactionDialog';
+import { TransferDialog } from './components/TransferDialog';
+import { InterestDialog } from './components/InterestDialog';
 import { CategoryDialog } from './components/CategoryDialog';
 import { PositionDialog } from './components/PositionDialog';
 import { MarketProvider } from './market';
@@ -28,8 +30,10 @@ import { monthOf, todayISO } from './lib/dates';
 import { importCSV } from './lib/csv';
 import { openTextFile, saveTextFile } from './lib/files';
 import { sampleData } from './lib/sample';
+import { ConfirmHost, confirmDialog } from './components/Confirm';
 
 type TxDialog = { tx: Transaction | null; type: TxType; date?: string } | null;
+type TrDialog = { transfer: Transfer | null; from?: string; to?: string; date?: string } | null;
 type CatDialog = { cat: Category | null; type: TxType } | null;
 type PosDialog = { position: Position | null; accountId?: string } | null;
 type Toast = { message: string; kind: 'ok' | 'error'; id: number } | null;
@@ -45,6 +49,8 @@ function Shell() {
   const [month, setMonth] = useState(monthOf(todayISO()));
   const [txDialog, setTxDialog] = useState<TxDialog>(null);
   const [catDialog, setCatDialog] = useState<CatDialog>(null);
+  const [trDialog, setTrDialog] = useState<TrDialog>(null);
+  const [interestFor, setInterestFor] = useState<string | null>(null);
   const [posDialog, setPosDialog] = useState<PosDialog>(null);
   const [toast, setToast] = useState<Toast>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -92,12 +98,16 @@ function Shell() {
     }
   }, [data, update, showToast]);
 
-  const loadSample = useCallback(() => {
+  const loadSample = useCallback(async () => {
     if (space.kind !== 'personal') {
       showToast('Sample data can only be loaded in your Personal space.', 'error');
       return;
     }
-    if (data.transactions.length && !window.confirm('Replace all your current data with sample data? Export a backup first if you want to keep it.')) return;
+    if (
+      data.transactions.length &&
+      !(await confirmDialog({ title: 'Load sample data?', message: 'This replaces all your current data with sample data. Export a backup first if you want to keep it.', confirmLabel: 'Replace my data', danger: true, icon: 'refresh' }))
+    )
+      return;
     update((d) => ({ ...sampleData(), notes: d.notes }));
     setMonth(monthOf(todayISO()));
     showToast('Sample data loaded');
@@ -111,6 +121,9 @@ function Shell() {
       setMonth,
       addTx: (type: TxType = 'expense', date?: string) => setTxDialog({ tx: null, type, date }),
       editTx: (tx: Transaction) => setTxDialog({ tx, type: tx.type }),
+      addTransfer: (opts) => setTrDialog({ transfer: null, ...opts }),
+      editTransfer: (transfer: Transfer) => setTrDialog({ transfer }),
+      editInterest: (a: Account) => setInterestFor(a.id),
       addCategory: (type: TxType) => setCatDialog({ cat: null, type }),
       editCategory: (cat: Category) => setCatDialog({ cat, type: cat.type }),
       addPosition: (accountId?: string) => setPosDialog({ position: null, accountId }),
@@ -161,7 +174,28 @@ function Shell() {
           defaultDate={txDialog.date ?? defaultDate}
           onClose={() => setTxDialog(null)}
           onSaved={(m) => showToast(m)}
+          onTransfer={() => {
+            setTrDialog({ transfer: null, date: txDialog.date });
+            setTxDialog(null);
+          }}
         />
+      )}
+      {trDialog && (
+        <TransferDialog
+          transfer={trDialog.transfer}
+          defaultFrom={trDialog.from}
+          defaultTo={trDialog.to}
+          defaultDate={trDialog.date ?? defaultDate}
+          onClose={() => setTrDialog(null)}
+          onSaved={(m) => showToast(m)}
+          onSwitchType={(type) => {
+            setTxDialog({ tx: null, type, date: trDialog.date });
+            setTrDialog(null);
+          }}
+        />
+      )}
+      {interestFor && data.accounts.some((a) => a.id === interestFor) && (
+        <InterestDialog account={data.accounts.find((a) => a.id === interestFor)!} onClose={() => setInterestFor(null)} onSaved={(m) => showToast(m)} />
       )}
       {spaceDialog?.kind === 'new' && <NewSpaceDialog onClose={() => setSpaceDialog(null)} onDone={(m) => showToast(m)} />}
       {spaceDialog?.kind === 'join' && <JoinSpaceDialog pack={spaceDialog.pack} onClose={() => setSpaceDialog(null)} onDone={(m) => showToast(m)} />}
@@ -177,6 +211,7 @@ function Shell() {
       )}
 
       <UpdateBanner />
+      <ConfirmHost />
       <div aria-live="polite" role="status">
         {toast && (
           <div key={toast.id} className={`toast ${toast.kind === 'error' ? 'error' : ''}`}>

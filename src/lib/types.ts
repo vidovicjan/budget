@@ -9,7 +9,37 @@ export interface Account {
   kind: AccountKind;
   /** Balance the account had before the first tracked transaction. */
   openingBalance: number;
+  /** Interest the bank pays on this account; posted automatically as income. */
+  interest?: AccountInterest;
   /** Last change (ms). Used to merge copies of a shared space; set automatically. */
+  updatedAt?: number;
+}
+
+export type InterestPayout = 'monthly' | 'quarterly' | 'yearly';
+
+/**
+ * Interest earned daily on the positive balance and paid out at the end of each period
+ * (month, quarter or year). Paid interest counts in later balances, so it compounds.
+ */
+export interface AccountInterest {
+  /** Yearly rate in percent, e.g. 2.5. */
+  rate: number;
+  payout: InterestPayout;
+  /** First day that earns interest, YYYY-MM-DD. */
+  since: string;
+  /** Tax the bank withholds from interest, in percent (0 = none). */
+  tax: number;
+}
+
+/** Money moved between two of your accounts. Not income or spending. */
+export interface Transfer {
+  id: string;
+  date: string;
+  from: string;
+  to: string;
+  amount: number;
+  note: string;
+  created: number;
   updatedAt?: number;
 }
 
@@ -77,6 +107,8 @@ export interface Member {
   status: 'active' | 'invited';
   /** Cloud account id once accounts exist (e.g. Firebase uid). */
   uid?: string;
+  /** Profile picture as a small data URL (resized to 160px on upload). */
+  photo?: string;
   updatedAt?: number;
 }
 
@@ -110,6 +142,8 @@ export interface Transaction {
   sourceId?: string;
   /** Set on payments generated from a subscription / bill. */
   serviceId?: string;
+  /** Set on interest payments generated for this account id. */
+  interestOf?: string;
   created: number;
   /** Shared spaces: the member who paid (expense) or received the money (income). */
   paidBy?: string;
@@ -176,6 +210,8 @@ export interface AppData {
   /** People in this space. Empty in a personal space. */
   members: Member[];
   settlements: Settlement[];
+  /** Money moved between your own accounts. */
+  transfers: Transfer[];
   /**
    * Deleted records, "<collection>:<id>" -> when (ms). Lets a merge tell "deleted here"
    * from "added there". Filled automatically by the store; old entries are pruned.

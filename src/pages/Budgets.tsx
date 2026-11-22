@@ -8,6 +8,9 @@ import { daysInMonth, mediumDate, monthLabel, monthOf, monthShort, todayISO } fr
 import { accountName, categoryLookup, inMonth, spendByCategory, totals, shade } from '../lib/data';
 import { money } from '../lib/format';
 import { daysBetween, dueLabel, monthlyCost, nextPayment, scheduleLabel } from '../lib/services';
+import { confirmDialog } from '../components/Confirm';
+
+const capital = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
 export function Budgets() {
   const { data, update } = useStore();
@@ -35,13 +38,13 @@ export function Budgets() {
         ? `${monthLabel(month)} · closed`
         : `${monthLabel(month)} · upcoming`;
 
-  const removeCategory = (c: Category) => {
+  const removeCategory = async (c: Category) => {
     const used = data.transactions.filter((t) => t.categoryId === c.id).length;
     const svcs = data.services.filter((s) => s.categoryId === c.id).length;
     const parts: string[] = [];
     if (used) parts.push(`its ${used} transaction${used === 1 ? '' : 's'} will be kept as Uncategorized`);
     if (svcs) parts.push(`its ${svcs} subscription${svcs === 1 ? '' : 's'} will be removed`);
-    if (!window.confirm(`Delete "${c.name}"?${parts.length ? ' ' + parts.join(' and ') + '.' : ''}`)) return;
+    if (!(await confirmDialog({ title: `Delete “${c.name}”?`, message: parts.length ? capital(parts.join(' and ')) + '.' : 'This category will be removed.', danger: true }))) return;
     update((d) => ({
       ...d,
       categories: d.categories.filter((x) => x.id !== c.id),
@@ -165,7 +168,7 @@ export function Budgets() {
                 <div className="cat-card-head">
                   <h3>
                     <span className="swatch" style={{ background: shade(c.color) }} />
-                    {c.name}
+                    <span className="cat-name" title={c.name}>{c.name}</span>
                   </h3>
                   <span className="cat-card-tools">
                     <button type="button" className="icon-btn" title="Edit name, color, limit and services" aria-label={`Edit ${c.name}`} onClick={() => ui.editCategory(c)}>

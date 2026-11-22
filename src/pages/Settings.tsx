@@ -11,6 +11,7 @@ import { todayISO } from '../lib/dates';
 import type { Account, AccountKind } from '../lib/types';
 import type { UpdateState } from '../lib/files';
 import { useUpdate } from '../components/UpdateBanner';
+import { confirmDialog } from '../components/Confirm';
 
 function updateText(u: UpdateState): string {
   switch (u.status) {
@@ -48,9 +49,14 @@ export function Settings() {
     setNewAccount('');
   };
 
-  const removeAccount = (a: Account) => {
+  const removeAccount = async (a: Account) => {
     const used = data.transactions.filter((t) => t.accountId === a.id).length;
     const held = data.positions.filter((p) => p.accountId === a.id).length;
+    const moved = data.transfers.filter((x) => x.from === a.id || x.to === a.id).length;
+    if (moved) {
+      ui.toast(`"${a.name}" is part of ${moved} transfer${moved === 1 ? '' : 's'}. Delete them on the Transactions page first.`, 'error');
+      return;
+    }
     if (held) {
       ui.toast(`"${a.name}" holds ${held} position${held === 1 ? '' : 's'}. Remove them on the Portfolio page first.`, 'error');
       return;
@@ -63,7 +69,8 @@ export function Settings() {
       ui.toast('You need at least one account.', 'error');
       return;
     }
-    if (window.confirm(`Delete the account "${a.name}"?`)) update((d) => ({ ...d, accounts: d.accounts.filter((x) => x.id !== a.id) }));
+    if (await confirmDialog({ title: `Delete “${a.name}”?`, message: 'This account has no transactions, so nothing else changes.', danger: true }))
+      update((d) => ({ ...d, accounts: d.accounts.filter((x) => x.id !== a.id) }));
   };
 
   const exportTx = async () => {
@@ -76,8 +83,14 @@ export function Settings() {
       const file = await openTextFile(['json']);
       if (!file) return;
       const restored = normalizeData(JSON.parse(file.content));
-      const msg = `Replace all current data with "${file.name}"? It has ${restored.transactions.length} transactions. This can't be undone.`;
-      if (!window.confirm(msg)) return;
+      const ok = await confirmDialog({
+        title: 'Restore this backup?',
+        message: `All current data in this space is replaced with “${file.name}” (${restored.transactions.length} transactions). This can’t be undone.`,
+        confirmLabel: 'Replace my data',
+        danger: true,
+        icon: 'refresh',
+      });
+      if (!ok) return;
       update(() => restored);
       ui.toast('Backup restored');
     } catch (err) {
@@ -85,8 +98,8 @@ export function Settings() {
     }
   };
 
-  const erase = () => {
-    if (!window.confirm('Erase all transactions, categories, budgets and accounts? Export a backup first if you might need them. This cannot be undone.')) return;
+  const erase = async () => {
+    if (!(await confirmDialog({ title: 'Erase all data?', message: 'All transactions, categories, budgets and accounts are deleted. Export a backup first if you might need them. This can’t be undone.', confirmLabel: 'Erase everything', danger: true }))) return;
     // Shared spaces keep their members (and currency); everything else is cleared.
     update((d) => ({ ...emptyData(), members: d.members, settings: { ...emptyData().settings, currency: d.settings.currency } }));
     ui.toast('All data erased');
@@ -229,7 +242,7 @@ export function Settings() {
             Accounts
           </h2>
           <span className="sub">
-            The opening balance is the cash the account held before your first tracked transaction. Investment accounts (crypto, brokerage) also hold
+            The opening balance is the cash the account held before your first tracked transaction. Add interest to savings (or any account) and it's paid in automatically. Investment accounts (crypto, brokerage) also hold
             positions, valued at live prices on the Portfolio page.
           </span>
         </div>
@@ -239,10 +252,11 @@ export function Settings() {
             <span>Type</span>
             <span>Opening balance</span>
             <span style={{ textAlign: 'right' }}>Balance today</span>
+            <span>Interest</span>
             <span />
           </div>
           {data.accounts.map((a) => (
-            <AccountRow key={a.id} account={a} balance={accountBalance(data, a.id)} positions={data.positions.filter((p) => p.accountId === a.id).length} onChange={(p) => setAccount(a.id, p)} onRemove={() => removeAccount(a)} />
+            <AccountRow key={a.id} account={a} balance={accountBalance(data, a.id)} positions={data.positions.filter((p) => p.accountId === a.id).length} onChange={(p) => setAccount(a.id, p)} onRemove={() => removeAccount(a)} onInterest={() => ui.editInterest(a)} />
           ))}
         </div>
         <form
@@ -365,12 +379,14 @@ function AccountRow({
   positions,
   onChange,
   onRemove,
+  onInterest,
 }: {
   account: Account;
   balance: number;
   positions: number;
   onChange: (p: Partial<Account>) => void;
   onRemove: () => void;
+  onInterest: () => void;
 }) {
   const [name, setName] = useState(account.name);
   const [opening, setOpening] = useState(account.openingBalance.toFixed(2));
@@ -406,6 +422,16 @@ function AccountRow({
       />
       <span className="bal" style={{ color: balance < 0 ? 'var(--coral-dark)' : undefined }}>
         {money(balance)}
+      </span>
+      <span>
+        <button
+          type="button"
+          className={`interest-chip ${account.interest ? 'on' : ''}`}
+          onClick={onInterest}
+          aria-label={account.interest ? `${account.name}: ${account.interest.rate}% interest. Edit` : `Add interest to ${account.name}`}
+        >
+          {account.interest ? `${account.interest.rate}% a year` : '+ Add'}
+        </button>
       </span>
       <button type="button" className="icon-btn" aria-label={`Delete ${account.name}`} onClick={onRemove}>
         <Icon name="trash" size={16} />

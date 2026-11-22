@@ -1,7 +1,8 @@
-import type { Account, AppData, Category, Member, Note, Position, Service, Settlement, Split, Transaction, TxType } from './types';
+import type { Account, AccountInterest, AppData, Category, Member, Note, Position, Service, Settlement, Split, Transaction, Transfer, TxType } from './types';
 import { monthOf, todayISO } from './dates';
 import { occurrences } from './services';
 import { existingKeys, isRepeat, occurrenceKey, repeatDates } from './repeat';
+import { applyInterest } from './interest';
 
 export const uid = () => crypto.randomUUID();
 
@@ -68,6 +69,7 @@ export function emptyData(): AppData {
     recurringSkips: [],
     members: [],
     settlements: [],
+    transfers: [],
     deleted: {},
   };
 }
@@ -101,6 +103,7 @@ export function normalizeData(raw: unknown): AppData {
     name: str(a.name, 'Account'),
     kind: a.kind === 'investment' ? 'investment' : 'cash',
     openingBalance: num(a.openingBalance),
+    ...(readInterest(a.interest) ? { interest: readInterest(a.interest)! } : {}),
     ...stamp(a),
   }));
   if (!accounts.length) accounts.push(...defaultAccounts());
@@ -128,6 +131,7 @@ export function normalizeData(raw: unknown): AppData {
       repeat: isRepeat(t.repeat) ? { every: t.repeat.every, unit: t.repeat.unit } : t.repeatMonthly === true ? { every: 1, unit: 'month' as const } : null,
       sourceId: typeof t.sourceId === 'string' ? t.sourceId : undefined,
       serviceId: typeof t.serviceId === 'string' ? t.serviceId : undefined,
+      ...(typeof t.interestOf === 'string' ? { interestOf: t.interestOf } : {}),
       created: num(t.created, i),
       ...(typeof t.paidBy === 'string' ? { paidBy: t.paidBy } : {}),
       ...(readSplit(t.split) ? { split: readSplit(t.split) } : {}),
@@ -181,11 +185,26 @@ export function normalizeData(raw: unknown): AppData {
       ...(typeof m.email === 'string' && m.email ? { email: m.email } : {}),
       status: m.status === 'invited' ? 'invited' : 'active',
       ...(typeof m.uid === 'string' ? { uid: m.uid } : {}),
+      ...(typeof m.photo === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(m.photo) && m.photo.length < 200_000 ? { photo: m.photo } : {}),
       ...stamp(m),
     }));
   const settlements: Settlement[] = (Array.isArray(raw.settlements) ? raw.settlements : [])
     .filter(isObj)
     .filter((x) => ISO_DATE.test(str(x.date)) && num(x.amount, NaN) > 0 && str(x.from) && str(x.to))
+    .map((x, i) => ({
+      id: str(x.id) || uid(),
+      date: str(x.date),
+      from: str(x.from),
+      to: str(x.to),
+      amount: num(x.amount),
+      note: str(x.note),
+      created: num(x.created, i),
+      ...stamp(x),
+    }));
+  const accountIds = new Set(accounts.map((a) => a.id));
+  const transfers: Transfer[] = (Array.isArray(raw.transfers) ? raw.transfers : [])
+    .filter(isObj)
+    .filter((x) => ISO_DATE.test(str(x.date)) && num(x.amount, NaN) > 0 && accountIds.has(str(x.from)) && accountIds.has(str(x.to)) && x.from !== x.to)
     .map((x, i) => ({
       id: str(x.id) || uid(),
       date: str(x.date),
@@ -217,7 +236,20 @@ export function normalizeData(raw: unknown): AppData {
     recurringSkips: Array.isArray(raw.recurringSkips) ? raw.recurringSkips.filter((k): k is string => typeof k === 'string') : [],
     members,
     settlements,
+    transfers,
     deleted,
+  };
+}
+
+function readInterest(v: unknown): AccountInterest | null {
+  if (!isObj(v)) return null;
+  const rate = num(v.rate);
+  if (!(rate > 0 && rate <= 100)) return null;
+  return {
+    rate,
+    payout: v.payout === 'quarterly' || v.payout === 'yearly' ? v.payout : 'monthly',
+    since: ISO_DATE.test(str(v.since)) ? str(v.since) : todayISO(),
+    tax: Math.min(100, Math.max(0, num(v.tax))),
   };
 }
 
@@ -256,7 +288,7 @@ export function applyRecurring(d: AppData, today = todayISO()): AppData {
       });
     }
   }
-  return added.length ? { ...d, transactions: [...d.transactions, ...added] } : d;
+  return applyInterest(added.length ? { ...d, transactions: [...d.transactions, ...added] } : d, today);
 }
 
 // ---------- selectors ----------
@@ -291,6 +323,11 @@ export function accountBalance(d: AppData, accountId: string, upTo = todayISO())
   for (const t of d.transactions) {
     if (t.accountId !== accountId || t.date > upTo) continue;
     b += t.type === 'income' ? t.amount : -t.amount;
+  }
+  for (const x of d.transfers) {
+    if (x.date > upTo) continue;
+    if (x.from === accountId) b -= x.amount;
+    if (x.to === accountId) b += x.amount;
   }
   return b;
 }

@@ -12,6 +12,8 @@ import { shareOf, summarize } from '../lib/shared';
 import { exportCopy } from '../sync/file';
 import { getProvider } from '../sync/provider';
 import type { Member, Settlement } from '../lib/types';
+import { alertDialog, confirmDialog } from '../components/Confirm';
+import { MemberDialog } from '../components/MemberDialog';
 
 type SettleDraft = { from: string; to: string; amount: number } | null;
 
@@ -26,6 +28,8 @@ export function Together() {
   const [settle, setSettle] = useState<SettleDraft>(null);
   const [inviteFor, setInviteFor] = useState<string>(() => data.members.find((m) => m.status === 'invited')?.id ?? '');
   const [newMember, setNewMember] = useState('');
+  const [editing, setEditing] = useState<string | null>(null);
+  const editingMember = data.members.find((m) => m.id === editing);
 
   // This month: what each person paid for shared costs, and their share.
   const monthByMember = useMemo(() => {
@@ -47,8 +51,8 @@ export function Together() {
     ui.toast(`Recorded: ${name(s.from)} paid ${name(s.to)} ${money(s.amount)}`);
   };
 
-  const removeSettlement = (s: Settlement) => {
-    if (!window.confirm(`Delete this payment of ${money(s.amount)} from ${name(s.from)} to ${name(s.to)}?`)) return;
+  const removeSettlement = async (s: Settlement) => {
+    if (!(await confirmDialog({ title: 'Delete this payment?', message: `${money(s.amount)} from ${name(s.from)} to ${name(s.to)}. Balances go back to how they were before it.`, danger: true }))) return;
     update((d) => ({ ...d, settlements: d.settlements.filter((x) => x.id !== s.id) }));
   };
 
@@ -63,19 +67,23 @@ export function Together() {
     ui.toast(`${n} added. Send them an invite file below.`);
   };
 
-  const renameMember = (m: Member) => {
-    const n = window.prompt('Name', m.name)?.trim();
-    if (!n || n === m.name) return;
-    update((d) => ({ ...d, members: d.members.map((x) => (x.id === m.id ? { ...x, name: n } : x)) }));
-  };
+  const saveMember = (id: string, patch: Pick<Member, 'name' | 'color'> & { photo?: string }) =>
+    update((d) => ({
+      ...d,
+      members: d.members.map((x) => {
+        if (x.id !== id) return x;
+        const { photo: _old, ...rest } = x;
+        return { ...rest, name: patch.name, color: patch.color, ...(patch.photo ? { photo: patch.photo } : {}) };
+      }),
+    }));
 
-  const removeMember = (m: Member) => {
+  const removeMember = async (m: Member) => {
     const used = data.transactions.some((t) => t.paidBy === m.id) || data.settlements.some((s) => s.from === m.id || s.to === m.id);
     if (used) {
-      window.alert(`${m.name} is part of transactions or payments in this space, so they can't be removed. Settle up first; their history stays.`);
+      await alertDialog({ title: `${m.name} can’t be removed`, message: `${m.name} paid for or shares transactions or payments in this space, so they have to stay to keep balances right.` });
       return;
     }
-    if (!window.confirm(`Remove ${m.name} from this space?`)) return;
+    if (!(await confirmDialog({ title: `Remove ${m.name}?`, message: `${m.name} will no longer be part of “${space.name}”.`, confirmLabel: 'Remove', danger: true, icon: 'trash' }))) return;
     update((d) => ({ ...d, members: d.members.filter((x) => x.id !== m.id) }));
   };
 
@@ -116,7 +124,7 @@ export function Together() {
   };
 
   const leave = async () => {
-    if (!window.confirm(`Remove “${space.name}” from this device? Other members keep their copies. Export a backup first if you might need it.`)) return;
+    if (!(await confirmDialog({ title: `Remove “${space.name}”?`, message: 'It’s removed from this device only. Other members keep their copies. Export a backup first if you might need it.', confirmLabel: 'Remove space', danger: true }))) return;
     await removeSpace(space.id);
     ui.toast(`“${space.name}” removed from this device`);
   };
@@ -129,7 +137,7 @@ export function Together() {
         eyebrow={
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
             <AvatarStack members={data.members} size={22} />
-            {KIND_INFO[space.kind].label} · {data.members.length} members
+            {KIND_INFO[space.kind].label} · {data.members.length} member{data.members.length === 1 ? '' : 's'}
           </span>
         }
         title={space.name}
@@ -267,7 +275,9 @@ export function Together() {
           <ul className="tg-members">
             {data.members.map((m) => (
               <li key={m.id}>
-                <Avatar member={m} size={32} />
+                <button type="button" className="avatar-btn" aria-label={`Edit ${m.name}`} onClick={() => setEditing(m.id)}>
+                  <Avatar member={m} size={36} />
+                </button>
                 <span className="stack grow">
                   <span className="tg-m-name">
                     {m.name}
@@ -278,7 +288,7 @@ export function Together() {
                     {m.email ? ` · ${m.email}` : ''}
                   </span>
                 </span>
-                <button type="button" className="icon-btn" aria-label={`Rename ${m.name}`} onClick={() => renameMember(m)}>
+                <button type="button" className="icon-btn" aria-label={`Edit ${m.name}`} title="Edit name and photo" onClick={() => setEditing(m.id)}>
                   <Icon name="edit" size={16} />
                 </button>
                 {!isMe(m.id) && (
@@ -422,6 +432,17 @@ export function Together() {
       </section>
 
       {settle && <SettleDialog draft={settle} members={data.members} onClose={() => setSettle(null)} onSave={recordSettlement} today={today} />}
+      {editingMember && (
+        <MemberDialog
+          member={editingMember}
+          isMe={isMe(editingMember.id)}
+          onClose={() => setEditing(null)}
+          onSave={(patch) => {
+            saveMember(editingMember.id, patch);
+            ui.toast(isMe(editingMember.id) ? 'Profile updated' : `${patch.name} updated`);
+          }}
+        />
+      )}
     </div>
   );
 }

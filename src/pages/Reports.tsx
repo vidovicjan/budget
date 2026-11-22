@@ -112,7 +112,7 @@ export function Reports() {
             Monthly breakdown
           </h2>
           <div style={{ overflowX: 'auto', margin: '0 -24px -24px' }}>
-            <table className="data" style={{ minWidth: 460 }}>
+            <table className="data month-table" style={{ minWidth: 460 }}>
               <thead>
                 <tr>
                   <th scope="col">Month</th>

@@ -7,6 +7,7 @@ import { Icon } from './Icon';
 import { uid } from '../lib/data';
 import { fetchQuotes, quoteKey, searchAssets, type AssetHit, type Quote } from '../lib/market';
 import { currencySymbol, foreign, moneyIn, parseAmount, pctSigned, priceIn } from '../lib/format';
+import { confirmDialog } from './Confirm';
 
 interface Props {
   position: Position | null;
@@ -123,8 +124,8 @@ export function PositionDialog({ position, accountId, onClose, onSaved }: Props)
     onClose();
   };
 
-  const remove = () => {
-    if (!position || !window.confirm(`Remove your ${position.symbol} position?`)) return;
+  const remove = async () => {
+    if (!position || !(await confirmDialog({ title: `Remove your ${position.symbol} position?`, message: 'It will no longer count towards your portfolio.', confirmLabel: 'Remove', danger: true }))) return;
     update((d) => ({ ...d, positions: d.positions.filter((p) => p.id !== position.id) }));
     onSaved('Position removed');
     onClose();

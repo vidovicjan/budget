@@ -51,6 +51,7 @@ export function existingKeys(d: AppData): Set<string> {
 
 /** Key to record when the user deletes a generated copy, so it isn't recreated. */
 export function skipKeyFor(d: AppData, copy: Transaction): string | null {
+  if (copy.interestOf) return copy.id;
   if (copy.serviceId) return `${copy.serviceId}:${monthOf(copy.date)}`;
   if (!copy.sourceId) return null;
   const tpl = d.transactions.find((t) => t.id === copy.sourceId);

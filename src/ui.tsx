@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { Category, Position, Transaction, TxType } from './lib/types';
+import type { Account, Category, Position, Transaction, Transfer, TxType } from './lib/types';
 
 export type Page = 'overview' | 'transactions' | 'calendar' | 'budgets' | 'portfolio' | 'reports' | 'advisor' | 'together' | 'notes' | 'settings';
 
@@ -11,6 +11,11 @@ export interface UI {
   setMonth: (m: string) => void;
   addTx: (type?: TxType, date?: string) => void;
   editTx: (tx: Transaction) => void;
+  /** Move money between accounts. */
+  addTransfer: (opts?: { from?: string; to?: string; date?: string }) => void;
+  editTransfer: (t: Transfer) => void;
+  /** Interest settings for an account. */
+  editInterest: (a: Account) => void;
   addCategory: (type: TxType) => void;
   editCategory: (cat: Category) => void;
   addPosition: (accountId?: string) => void;

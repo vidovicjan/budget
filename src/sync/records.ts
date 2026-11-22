@@ -16,7 +16,7 @@ import { monthOf } from '../lib/dates';
  * client runs when a snapshot arrives. See src/sync/firebase.ts.
  */
 
-export const COLLECTIONS = ['accounts', 'categories', 'transactions', 'services', 'positions', 'notes', 'members', 'settlements'] as const;
+export const COLLECTIONS = ['accounts', 'categories', 'transactions', 'services', 'positions', 'notes', 'members', 'settlements', 'transfers'] as const;
 export type Collection = (typeof COLLECTIONS)[number];
 
 type Rec = { id: string; updatedAt?: number };

@@ -9,6 +9,7 @@ import { shortDate } from '../lib/dates';
 import { repeatDates, repeatLabel, skipKeyFor, unitName } from '../lib/repeat';
 import { money, parseAmount, round2 } from '../lib/format';
 import { Icon } from './Icon';
+import { confirmDialog } from './Confirm';
 
 interface Props {
   tx: Transaction | null;
@@ -16,6 +17,8 @@ interface Props {
   defaultDate: string;
   onClose: () => void;
   onSaved: (message: string) => void;
+  /** Switch to the transfer dialog (shown as a third type option for new entries). */
+  onTransfer?: () => void;
 }
 
 function currencySymbol(currency: string) {
@@ -53,7 +56,7 @@ function presetOf(r: Repeat | null): RepeatKind {
   return 'custom';
 }
 
-export function TransactionDialog({ tx, defaultType, defaultDate, onClose, onSaved }: Props) {
+export function TransactionDialog({ tx, defaultType, defaultDate, onClose, onSaved, onTransfer }: Props) {
   const { data, update, space } = useStore();
   const [type, setType] = useState<TxType>(tx?.type ?? defaultType);
   const firstCat = (t: TxType) => data.categories.find((c) => c.type === t)?.id ?? '';
@@ -169,13 +172,13 @@ export function TransactionDialog({ tx, defaultType, defaultDate, onClose, onSav
     onClose();
   };
 
-  const remove = () => {
+  const remove = async () => {
     if (!tx) return;
     const series = !!tx.repeat && !tx.sourceId;
     const msg = series
       ? 'Delete this transaction? Copies already made stay; no new ones will be created.'
       : 'Delete this transaction?';
-    if (!window.confirm(msg)) return;
+    if (!(await confirmDialog({ title: 'Delete this transaction?', message: msg === 'Delete this transaction?' ? 'This can’t be undone.' : 'Copies already made stay; no new ones will be created.', danger: true }))) return;
     update((d) => ({
       ...d,
       transactions: d.transactions.filter((t) => t.id !== tx.id),
@@ -191,12 +194,17 @@ export function TransactionDialog({ tx, defaultType, defaultDate, onClose, onSav
   return (
     <Modal title={tx ? 'Edit transaction' : 'Add transaction'} onClose={onClose}>
       <form onSubmit={save} noValidate style={{ display: 'contents' }}>
-        <div className="toggle" role="group" aria-label="Transaction type">
+        <div className={`toggle ${!tx && onTransfer ? 'three' : ''}`} role="group" aria-label="Transaction type">
           {(['expense', 'income'] as TxType[]).map((t) => (
             <button type="button" key={t} aria-pressed={type === t} onClick={() => pickType(t)}>
               {t === 'expense' ? 'Expense' : 'Income'}
             </button>
           ))}
+          {!tx && onTransfer && (
+            <button type="button" aria-pressed={false} onClick={onTransfer} title="Move money between your accounts">
+              Transfer
+            </button>
+          )}
         </div>
 
         <div className="field">

@@ -4,6 +4,7 @@ import { useMarket } from '../market';
 import { Icon } from './Icon';
 import { accountValue, netWorth } from '../lib/market';
 import { money, moneyIn, pctSigned } from '../lib/format';
+import { interestPreview } from '../lib/interest';
 
 /** Every account with its current value; investment accounts at live prices. */
 export function AccountsCard() {
@@ -26,9 +27,15 @@ export function AccountsCard() {
             {data.positions.length > 0 && ' · investments at live prices'}
           </span>
         </div>
-        <button type="button" className="link-btn" onClick={() => ui.go('settings')}>
-          Manage
-        </button>
+        <div className="card-head-actions">
+          <button type="button" className="btn btn-secondary" onClick={() => ui.addTransfer()} disabled={data.accounts.length < 2}>
+            <Icon name="swap" size={16} />
+            Move money
+          </button>
+          <button type="button" className="link-btn" onClick={() => ui.go('settings')}>
+            Manage
+          </button>
+        </div>
       </div>
       <div className="acct-grid">
         {data.accounts.map((a) => {
@@ -60,6 +67,10 @@ export function AccountsCard() {
                   ) : (
                     'No positions yet'
                   )
+                ) : a.interest ? (
+                  <span className="int" title={`${a.interest.rate}% a year, paid ${a.interest.payout}`}>
+                    {a.interest.rate}% · +{money(interestPreview(data, a)?.perMonth ?? 0)}/mo
+                  </span>
                 ) : (
                   'Cash'
                 )}
