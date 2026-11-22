@@ -185,11 +185,19 @@ export interface Settings {
   updatedAt?: number;
 }
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 export interface Note {
   id: string;
   title: string;
   body: string;
   pinned: boolean;
+  /** Tick-box list shown under the title. Absent when the note has no checklist. */
+  checklist?: ChecklistItem[];
   /** Last edit, ms since epoch. */
   updated: number;
   /** Last change (ms). Used to merge copies of a shared space; set automatically. */

@@ -897,3 +897,40 @@ button.acct-tile:hover { border-color: var(--input-border); background: var(--cr
 .transfer-amt { color: var(--muted); font-weight: 500; white-space: nowrap; }
 .transfer-route-text { display: inline-flex; align-items: center; gap: 6px; }
 .transfer-route-text svg { color: var(--muted); }
+
+/* Note checklists */
+.note-scroll { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; margin: 0 -8px; padding: 0 8px; }
+.note-scroll .note-body-input { flex: 1; }
+.note-scroll.has-list .note-body-input { flex: 1 0 auto; min-height: 96px; field-sizing: content; padding-top: 10px; border-top: 1px dashed var(--border); }
+.checklist { display: flex; flex-direction: column; gap: 2px; padding: 4px 0 6px; }
+.check-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.check-bar { flex: 1; max-width: 220px; height: 6px; border-radius: 3px; background: var(--cream-200); overflow: hidden; }
+.check-bar > span { display: block; height: 100%; border-radius: 3px; background: var(--ok); transition: width 0.2s ease; }
+.check-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.check-item { display: flex; align-items: flex-start; gap: 10px; padding: 3px 0; border-radius: 8px; }
+.check-box {
+  appearance: none; -webkit-appearance: none; position: relative; flex-shrink: 0; width: 20px; height: 20px; margin: 5px 0 0;
+  border: 1.8px solid var(--input-border); border-radius: 6px; background: var(--surface); cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.check-box:hover { border-color: var(--ink); }
+.check-box:checked { background: var(--ok); border-color: var(--ok); }
+.check-box:checked::after {
+  content: ''; position: absolute; left: 5.5px; top: 1.5px; width: 5px; height: 10px;
+  border: solid #fff; border-width: 0 2.2px 2.2px 0; transform: rotate(45deg);
+}
+.check-box:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.check-text {
+  flex: 1; min-width: 0; padding: 4px 0; border: 0; outline: none; resize: none; background: transparent; overflow: hidden;
+  color: var(--ink); font: inherit; font-size: 15px; line-height: 1.5; field-sizing: content;
+}
+.check-item.done .check-text { color: var(--muted); text-decoration: line-through; }
+.check-remove { width: 30px; height: 30px; flex-shrink: 0; opacity: 0; color: var(--muted); }
+.check-item:hover .check-remove, .check-item:focus-within .check-remove { opacity: 1; }
+.check-add, .check-done-toggle {
+  display: inline-flex; align-items: center; gap: 10px; align-self: flex-start; padding: 6px 0; border: 0; background: none;
+  color: var(--muted); font-size: 14px; font-weight: 500;
+}
+.check-add svg { margin: 0 2px; }
+.check-add:hover, .check-done-toggle:hover { color: var(--ink); }
+.check-done-toggle { margin-top: 6px; font-size: 13px; font-weight: 600; }

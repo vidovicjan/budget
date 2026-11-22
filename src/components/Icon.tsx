@@ -158,6 +158,14 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M8 17h5" />
     </>
   ),
+  checklist: (
+    <>
+      <path d="m4 6.5 1.5 1.5L8.5 5" />
+      <path d="m4 13.5 1.5 1.5 3-3" />
+      <path d="M12 7h8M12 14h8" />
+      <path d="M5 19.5h2M12 19.5h8" />
+    </>
+  ),
   pin: (
     <>
       <path d="M12 17v4" />

@@ -171,6 +171,14 @@ export function normalizeData(raw: unknown): AppData {
     title: str(n.title),
     body: str(n.body),
     pinned: n.pinned === true,
+    ...(Array.isArray(n.checklist)
+      ? {
+          checklist: n.checklist
+            .filter(isObj)
+            .slice(0, 500)
+            .map((c) => ({ id: str(c.id) || uid(), text: str(c.text).slice(0, 1000), done: c.done === true })),
+        }
+      : {}),
     updated: num(n.updated, Date.now()),
     ...stamp(n),
   }));

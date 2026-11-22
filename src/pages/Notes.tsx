@@ -6,18 +6,23 @@ import { Icon } from '../components/Icon';
 import { uid } from '../lib/data';
 import type { Note } from '../lib/types';
 import { confirmDialog } from '../components/Confirm';
+import { Checklist, checklistSummary } from '../components/Checklist';
 
 const SAVE_DELAY = 400;
 
-/** Title to show: the title, else the first line of the text. */
-const displayTitle = (n: Pick<Note, 'title' | 'body'>) => n.title.trim() || n.body.trim().split('\n')[0].slice(0, 80) || 'Untitled note';
+/** Title to show: the title, else the first line of the text, else the first list item. */
+const displayTitle = (n: Pick<Note, 'title' | 'body' | 'checklist'>) =>
+  n.title.trim() || n.body.trim().split('\n')[0].slice(0, 80) || n.checklist?.find((i) => i.text.trim())?.text.trim().slice(0, 80) || 'Untitled note';
 
-/** Body preview without the line already used as the title. */
+/** Body preview without the line already used as the title; checklist progress first. */
 function preview(n: Note) {
   const lines = n.body.trim().split('\n');
   const rest = n.title.trim() ? lines : lines.slice(1);
-  return rest.join(' ').trim().slice(0, 120);
+  const text = rest.join(' ').trim();
+  return [checklistSummary(n.checklist), text].filter(Boolean).join(' · ').slice(0, 120);
 }
+
+const searchText = (n: Note) => `${n.title}\n${n.body}\n${(n.checklist ?? []).map((i) => i.text).join('\n')}`.toLowerCase();
 
 function when(ms: number) {
   const d = new Date(ms);
@@ -46,7 +51,8 @@ export function Notes() {
     if (!n) return;
     update((d) => {
       const old = d.notes.find((x) => x.id === n.id);
-      if (!old || (old.title === n.title && old.body === n.body && old.pinned === n.pinned)) return d;
+      if (!old || (old.title === n.title && old.body === n.body && old.pinned === n.pinned && JSON.stringify(old.checklist) === JSON.stringify(n.checklist)))
+        return d;
       return { ...d, notes: d.notes.map((x) => (x.id === n.id ? n : x)) };
     });
   }, [update]);
@@ -60,7 +66,7 @@ export function Notes() {
   }, [data.notes, draft]);
 
   const q = query.trim().toLowerCase();
-  const visible = q ? sorted.filter((n) => `${n.title}\n${n.body}`.toLowerCase().includes(q)) : sorted;
+  const visible = q ? sorted.filter((n) => searchText(n).includes(q)) : sorted;
   const current = sorted.find((n) => n.id === selectedId) ?? null;
 
   // Load the selected note into the editor.
@@ -70,9 +76,12 @@ export function Notes() {
     setDraft(data.notes.find((n) => n.id === selectedId) ?? null);
   }, [selectedId, data.notes, flush]);
 
-  const edit = (patch: Partial<Pick<Note, 'title' | 'body' | 'pinned'>>) => {
+  const edit = (patch: Partial<Pick<Note, 'title' | 'body' | 'pinned' | 'checklist'>>) => {
     if (!draft) return;
-    setDraft({ ...draft, ...patch, updated: Date.now() });
+    const n = { ...draft, ...patch, updated: Date.now() };
+    if (patch.checklist === undefined && 'checklist' in patch) delete n.checklist;
+    draftRef.current = n;
+    setDraft(n);
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(flush, SAVE_DELAY);
   };
@@ -111,7 +120,30 @@ export function Notes() {
     flush();
   };
 
-  const words = draft ? draft.body.trim().split(/\s+/).filter(Boolean).length : 0;
+  const toggleChecklist = async () => {
+    if (!draft) return;
+    if (!draft.checklist) {
+      edit({ checklist: [{ id: uid(), text: '', done: false }] });
+      window.setTimeout(() => document.querySelector<HTMLTextAreaElement>('.note-editor .check-text')?.focus(), 0);
+      return;
+    }
+    const filled = draft.checklist.filter((i) => i.text.trim()).length;
+    if (
+      filled &&
+      !(await confirmDialog({
+        title: 'Remove the checklist?',
+        message: `Its ${filled} item${filled === 1 ? '' : 's'} will be deleted. The note's text stays.`,
+        confirmLabel: 'Remove checklist',
+        danger: true,
+      }))
+    )
+      return;
+    edit({ checklist: undefined });
+    flush();
+  };
+
+  const listWords = (draft?.checklist ?? []).map((i) => i.text).join(' ');
+  const words = draft ? `${draft.body} ${listWords}`.trim().split(/\s+/).filter(Boolean).length : 0;
 
   return (
     <div className="container">
@@ -174,6 +206,16 @@ export function Notes() {
                   <span className="note-tools">
                     <button
                       type="button"
+                      className={`icon-btn ${draft.checklist ? 'active' : ''}`}
+                      aria-pressed={!!draft.checklist}
+                      title={draft.checklist ? 'Remove checklist' : 'Add checklist'}
+                      aria-label={draft.checklist ? 'Remove checklist' : 'Add checklist'}
+                      onClick={toggleChecklist}
+                    >
+                      <Icon name="checklist" size={16} />
+                    </button>
+                    <button
+                      type="button"
                       className={`icon-btn ${draft.pinned ? 'active' : ''}`}
                       aria-pressed={draft.pinned}
                       title={draft.pinned ? 'Unpin' : 'Pin to top'}
@@ -205,20 +247,24 @@ export function Notes() {
                   }}
                   onBlur={flush}
                 />
-                <label htmlFor="note-body" className="sr-only">
-                  Note
-                </label>
-                <textarea
-                  id="note-body"
-                  ref={bodyRef}
-                  className="note-body-input"
-                  placeholder="Start writing…"
-                  value={draft.body}
-                  onChange={(e) => edit({ body: e.target.value })}
-                  onBlur={flush}
-                />
+                <div className={`note-scroll ${draft.checklist ? 'has-list' : ''}`}>
+                  {draft.checklist && <Checklist items={draft.checklist} onChange={(checklist) => edit({ checklist })} />}
+                  <label htmlFor="note-body" className="sr-only">
+                    Note
+                  </label>
+                  <textarea
+                    id="note-body"
+                    ref={bodyRef}
+                    className="note-body-input"
+                    placeholder={draft.checklist ? 'Add a note…' : 'Start writing…'}
+                    value={draft.body}
+                    onChange={(e) => edit({ body: e.target.value })}
+                    onBlur={flush}
+                  />
+                </div>
                 <div className="note-foot sub">
                   {words} word{words === 1 ? '' : 's'} · {draft.body.length} character{draft.body.length === 1 ? '' : 's'}
+                  {draft.checklist?.length ? ` · ${checklistSummary(draft.checklist).split(' · ')[0]}` : ''}
                 </div>
               </>
             ) : (
