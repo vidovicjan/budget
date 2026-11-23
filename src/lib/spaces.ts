@@ -1,6 +1,7 @@
 import type { AppData, Category, Member, ThemePref } from './types';
 import { CATEGORY_COLORS, MEMBER_COLORS, emptyData, uid } from './data';
 import { kvGet, kvSet, kvDelete } from './db';
+import type { MascotId } from './mascots';
 
 /**
  * A space is one budget: Personal, or one shared with a partner, family, friends or roommates.
@@ -42,6 +43,8 @@ export interface Workspace {
     /** Name used for "you" when creating or joining spaces. */
     name: string;
     theme: ThemePref;
+    /** Advisor mascot; the default one when unset. */
+    mascot?: MascotId;
   };
 }
 

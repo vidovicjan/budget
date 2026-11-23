@@ -12,6 +12,8 @@ import type { Account, AccountKind } from '../lib/types';
 import type { UpdateState } from '../lib/files';
 import { useUpdate } from '../components/UpdateBanner';
 import { confirmDialog } from '../components/Confirm';
+import { Mascot } from '../components/Mascot';
+import { MASCOTS, mascotInfo } from '../lib/mascots';
 
 function updateText(u: UpdateState): string {
   switch (u.status) {
@@ -33,11 +35,12 @@ function updateText(u: UpdateState): string {
 }
 
 export function Settings() {
-  const { data, update, workspace, setTheme } = useStore();
+  const { data, update, workspace, setTheme, setMascot } = useStore();
   const ui = useUI();
   const [newAccount, setNewAccount] = useState('');
   const [newKind, setNewKind] = useState<AccountKind>('cash');
   const update_ = useUpdate();
+  const mascot = mascotInfo(workspace.device.mascot);
 
   const setAccount = (id: string, patch: Partial<Account>) =>
     update((d) => ({ ...d, accounts: d.accounts.map((a) => (a.id === id ? { ...a, ...patch } : a)) }));
@@ -185,6 +188,27 @@ export function Settings() {
             )}
           </div>
         )}
+      </section>
+
+      <section className="card" aria-labelledby="mascot-title">
+        <div className="stack">
+          <h2 id="mascot-title" className="card-title">
+            Advisor mascot
+          </h2>
+          <span className="sub">Who shows you your money check-up on the Advisor page.</span>
+        </div>
+        <div className="mascot-picker" role="group" aria-labelledby="mascot-title">
+          {MASCOTS.map((m) => (
+            <button key={m.id} type="button" className="mascot-option" aria-pressed={mascot.id === m.id} onClick={() => setMascot(m.id)}>
+              <Mascot mascot={m} animated={mascot.id === m.id} />
+              <span className="mascot-option-text">
+                <strong>{m.name}</strong>
+                <span className="sub">{m.kind}</span>
+                <span className="sub">{m.blurb}</span>
+              </span>
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="card" aria-labelledby="prices-title">

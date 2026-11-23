@@ -147,7 +147,14 @@ button, .nav-item, .btn { touch-action: manipulation; }
 
   /* Charts and small grids */
   .hbar { grid-template-columns: 84px minmax(0, 1fr) 92px; gap: 10px; }
-  .adv-hero { grid-template-columns: minmax(0, 1fr); padding: 22px 18px; }
+  .adv-hero { grid-template-columns: auto minmax(0, 1fr); padding: 22px 18px; }
+  .adv-mascot { width: 120px; }
+  .adv-score { justify-self: center; }
+  .adv-hero-text { grid-column: 1 / -1; }
+  .mascot-picker { gap: 8px; }
+  .mascot-option { padding: 6px 6px 12px; }
+  .mascot-option .mascot { padding: 8px 6px 2px; }
+  .mascot-option-text > :last-child { display: none; }
   .split-row { grid-template-columns: minmax(0, 1fr) 96px 84px; }
   .tg-bars li { grid-template-columns: 96px minmax(0, 1fr) auto; }
   .tg-step-row .select-wrap, .repeat-custom .select-wrap { width: auto; flex: 1; }

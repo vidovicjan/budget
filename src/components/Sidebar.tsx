@@ -4,6 +4,8 @@ import { useStore } from '../store';
 import { mediumDate } from '../lib/dates';
 import { isShared } from '../lib/shared';
 import { SpaceSwitcher } from './SpaceSwitcher';
+import { MascotHead } from './Mascot';
+import { mascotInfo } from '../lib/mascots';
 
 const ITEMS: { page: Page; label: string; icon: IconName }[] = [
   { page: 'overview', label: 'Overview', icon: 'grid' },
@@ -20,7 +22,7 @@ const ITEMS: { page: Page; label: string; icon: IconName }[] = [
 
 export function Sidebar() {
   const { page, go, exportBackup } = useUI();
-  const { data, saveError, space } = useStore();
+  const { data, saveError, space, workspace } = useStore();
   const shared = isShared(data);
   const last = data.settings.lastBackup;
 
@@ -37,7 +39,7 @@ export function Sidebar() {
         <span className="nav-label">Menu</span>
         {ITEMS.filter((it) => it.page !== 'together' || shared).map((it) => (
           <button key={it.page} type="button" className="nav-item" aria-current={page === it.page ? 'page' : undefined} onClick={() => go(it.page)}>
-            <Icon name={it.icon} />
+            {it.page === 'advisor' ? <MascotHead mascot={mascotInfo(workspace.device.mascot)} size={26} /> : <Icon name={it.icon} />}
             {it.label}
           </button>
         ))}

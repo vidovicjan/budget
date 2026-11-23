@@ -4,9 +4,11 @@ import { useUI, type Page } from '../ui';
 import { useMarket } from '../market';
 import { MonthSwitch, PageHeader } from '../components/common';
 import { Icon, type IconName } from '../components/Icon';
+import { Mascot } from '../components/Mascot';
+import { mascotInfo, type MascotPose } from '../lib/mascots';
 import { monthLabel, monthOf, todayISO } from '../lib/dates';
 import { money, moneyWhole } from '../lib/format';
-import { analyze, defaultAnalysisMonth, type Advice, type Area, type Level } from '../lib/advisor';
+import { analyze, defaultAnalysisMonth, type Advice, type Analysis, type Area, type Level } from '../lib/advisor';
 
 const AREAS: { id: Area; label: string; icon: IconName; blurb: string; page: Page }[] = [
   { id: 'spending', label: 'Cut spending', icon: 'down', blurb: 'Where money leaked this month', page: 'budgets' },
@@ -23,8 +25,15 @@ function scoreWord(s: number) {
   return 'Needs work';
 }
 
+/** How the mascot reacts to the month. */
+function poseFor(a: Analysis, partial: boolean): MascotPose {
+  if (a.net < 0 || a.score < 45) return 'alert';
+  if (partial) return 'think';
+  return a.score >= 65 ? 'cheer' : 'wave';
+}
+
 export function Advisor() {
-  const { data } = useStore();
+  const { data, workspace } = useStore();
   const ui = useUI();
   const m = useMarket();
   const today = todayISO();
@@ -32,6 +41,7 @@ export function Advisor() {
   const a = useMemo(() => analyze(data, month, { quotes: m.quotes, fx: m.fx }, today), [data, month, m.quotes, m.fx, today]);
   const partial = month === monthOf(today);
 
+  const mascot = mascotInfo(workspace.device.mascot);
   const ring = 2 * Math.PI * 42;
 
   return (
@@ -42,11 +52,9 @@ export function Advisor() {
 
       {a.txCount === 0 ? (
         <section className="card notes-empty">
-          <span className="notes-empty-icon" aria-hidden="true">
-            <Icon name="spark" size={26} />
-          </span>
+          <Mascot mascot={mascot} pose="wave" animated className="adv-mascot-empty" />
           <h2 className="card-title">No transactions in {monthLabel(month)}</h2>
-          <p className="sub">Add income and expenses, or pick another month, and the advisor will check where money went and what to improve.</p>
+          <p className="sub">Add income and expenses, or pick another month, and {mascot.name} will check where money went and what to improve.</p>
           <button type="button" className="btn btn-primary" onClick={() => ui.addTx('expense')}>
             <Icon name="plus" strokeWidth={2.2} />
             Add transaction
@@ -62,6 +70,10 @@ export function Advisor() {
           )}
 
           <section className="card card-dark adv-hero" aria-label="Summary">
+            <div className="adv-mascot">
+              <Mascot mascot={mascot} pose={poseFor(a, partial)} animated />
+              <span className="adv-mascot-name">{mascot.name} · your advisor</span>
+            </div>
             <div className="adv-score">
               <svg viewBox="0 0 100 100" width="112" height="112" aria-hidden="true">
                 <circle cx="50" cy="50" r="42" fill="none" stroke="var(--navy-600)" strokeWidth="9" />

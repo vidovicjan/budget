@@ -3,6 +3,7 @@ import type { AppData, ThemePref } from './lib/types';
 import { applyRecurring, emptyData, normalizeData } from './lib/data';
 import { setCurrency } from './lib/format';
 import { applyTheme } from './lib/theme';
+import type { MascotId } from './lib/mascots';
 import {
   PERSONAL_ID,
   deleteSpaceData,
@@ -34,6 +35,7 @@ interface Store {
   updateSpace: (id: string, patch: Partial<SpaceMeta>) => void;
   removeSpace: (id: string) => Promise<void>;
   setTheme: (t: ThemePref) => void;
+  setMascot: (id: MascotId) => void;
   setDeviceName: (name: string) => void;
 }
 
@@ -138,6 +140,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const setTheme = useCallback((t: ThemePref) => setWs((w) => (w ? { ...w, device: { ...w.device, theme: t } } : w)), []);
+  const setMascot = useCallback((id: MascotId) => setWs((w) => (w ? { ...w, device: { ...w.device, mascot: id } } : w)), []);
   const setDeviceName = useCallback((name: string) => setWs((w) => (w ? { ...w, device: { ...w.device, name } } : w)), []);
 
   if (!ws || !active) return <div className="boot" aria-busy="true" />;
@@ -158,6 +161,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         updateSpace,
         removeSpace,
         setTheme,
+        setMascot,
         setDeviceName,
       }}
     >

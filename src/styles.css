@@ -610,7 +610,7 @@ button.acct-tile:hover { border-color: var(--input-border); background: var(--cr
 
 /* ---------- advisor ---------- */
 
-.adv-hero { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px 28px; align-items: center; padding: 28px 32px; }
+.adv-hero { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 20px 28px; align-items: center; padding: 28px 32px; }
 .adv-score { position: relative; width: 112px; height: 112px; }
 .adv-score-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: var(--display); font-size: 34px; font-weight: 600; line-height: 1; }
 .adv-score-num small { font-family: var(--font); font-size: 12px; font-weight: 500; color: var(--muted-dark); }
@@ -934,3 +934,75 @@ button.acct-tile:hover { border-color: var(--input-border); background: var(--cr
 .check-add svg { margin: 0 2px; }
 .check-add:hover, .check-done-toggle:hover { color: var(--ink); }
 .check-done-toggle { margin-top: 6px; font-size: 13px; font-weight: 600; }
+
+/* ---------- mascots ---------- */
+
+.mascot { display: block; overflow: hidden; border-radius: 18px; }
+.mascot svg { display: block; width: 100%; height: auto; }
+.mascot-head { display: block; flex-shrink: 0; overflow: hidden; border-radius: 50%; }
+.mascot-head svg { display: block; width: 100%; height: 100%; }
+/* The menu recolours its line icons; the mascot keeps its own colours. The negative margin lines it up with them. */
+.nav-item .mascot-head { margin: -4px; }
+.nav-item[aria-current='page'] .mascot-head svg { stroke: none; }
+
+.adv-mascot { width: 148px; display: flex; flex-direction: column; gap: 8px; text-align: center; }
+.adv-mascot .mascot { padding: 12px 14px 4px; }
+.adv-mascot-name { font-size: 12px; font-weight: 500; color: var(--muted-dark); }
+.adv-mascot-empty { width: 150px; padding: 12px 14px 4px; }
+
+.mascot-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.mascot-option {
+  display: flex; flex-direction: column; gap: 12px; padding: 10px 10px 14px; border-radius: 20px; text-align: left;
+  border: 2px solid var(--border); background: transparent; color: var(--ink); font: inherit; cursor: pointer;
+}
+.mascot-option:hover { border-color: var(--input-border); }
+.mascot-option[aria-pressed='true'] { border-color: var(--coral); }
+.mascot-option .mascot { width: 100%; padding: 14px 14px 4px; border-radius: 12px; }
+.mascot-option .mascot svg { max-width: 150px; margin: 0 auto; }
+.mascot-option-text { display: flex; flex-direction: column; gap: 2px; padding: 0 4px; }
+.mascot-option-text strong { font-family: var(--display); font-size: 17px; font-weight: 600; }
+
+/* Mascot animation, from the mascot kit. */
+.mk-body,.mk-shadow,.mk-wave,.mk-blink,.mk-flicker,.mk-sway,.mk-dot,.mk-lines{transform-box:view-box}
+.mk-glow,.mk-ping,.mk-pop{transform-box:fill-box;transform-origin:center}
+.mk-anim .mk-body{animation:mk-bob 2.4s ease-in-out infinite}
+.mk-anim .mk-shadow{animation:mk-shade 2.4s ease-in-out infinite}
+.mk-anim.mk-think .mk-body{animation:mk-tilt 3.2s ease-in-out infinite}
+.mk-anim.mk-think .mk-shadow{animation-duration:3.2s}
+.mk-anim.mk-cheer .mk-body{animation:mk-jump .9s cubic-bezier(.3,.7,.4,1) infinite}
+.mk-anim.mk-cheer .mk-shadow{animation:mk-shadejump .9s cubic-bezier(.3,.7,.4,1) infinite}
+.mk-anim.mk-alert .mk-body{animation:mk-shake 1.8s ease-in-out infinite}
+.mk-anim.mk-alert .mk-shadow{animation:none}
+.mk-anim .mk-wave{animation:mk-wave 1.2s ease-in-out infinite}
+.mk-anim .mk-blink{animation:mk-blink 4.2s infinite}
+.mk-anim .mk-glow{animation:mk-glow 1.6s ease-in-out infinite}
+.mk-anim.mk-alert .mk-glow{animation-duration:.5s}
+.mk-anim .mk-flicker{animation:mk-flicker .28s ease-in-out infinite alternate}
+.mk-anim .mk-sway{animation:mk-sway 3.4s ease-in-out infinite}
+.mk-anim .mk-dot{animation:mk-dot 1.5s ease-in-out infinite}
+.mk-anim .mk-dot:nth-child(2){animation-delay:.25s}
+.mk-anim .mk-dot:nth-child(3){animation-delay:.5s}
+.mk-anim .mk-pop{animation:mk-pop 1.8s ease-in-out infinite}
+.mk-anim .mk-pop:nth-child(2n){animation-delay:-.6s}
+.mk-anim .mk-pop:nth-child(3n){animation-delay:-1.2s}
+.mk-anim .mk-ping{animation:mk-ping 1.8s ease-in-out infinite}
+.mk-anim .mk-lines{animation:mk-lines 1.2s ease-in-out infinite}
+@keyframes mk-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes mk-shade{0%,100%{transform:scaleX(1);opacity:1}50%{transform:scaleX(.86);opacity:.7}}
+@keyframes mk-tilt{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-2.5deg)}}
+@keyframes mk-jump{0%{transform:translateY(0) scale(1.04,.94)}35%{transform:translateY(-16px) scale(.98,1.03)}60%{transform:translateY(-16px) scale(1,1)}85%{transform:translateY(0) scale(1.03,.96)}100%{transform:translateY(0) scale(1.04,.94)}}
+@keyframes mk-shadejump{0%,100%{transform:scaleX(1.05);opacity:1}35%,60%{transform:scaleX(.75);opacity:.5}85%{transform:scaleX(1)}}
+@keyframes mk-shake{0%,55%,100%{transform:rotate(0)}5%{transform:rotate(-3deg)}12%{transform:rotate(3deg)}19%{transform:rotate(-2deg)}26%{transform:rotate(2deg)}33%{transform:rotate(0)}}
+@keyframes mk-wave{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(10deg)}}
+@keyframes mk-blink{0%,44%,50%,100%{transform:scaleY(1)}47%{transform:scaleY(.1)}}
+@keyframes mk-glow{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.82)}}
+@keyframes mk-flicker{from{transform:scaleY(.8)}to{transform:scaleY(1.15)}}
+@keyframes mk-sway{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}
+@keyframes mk-dot{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+@keyframes mk-pop{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-8px) rotate(14deg)}}
+@keyframes mk-ping{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+@keyframes mk-lines{0%,100%{opacity:.15}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.mk-anim *{animation:none!important}}
+/* Big movements play a few times, then settle. */
+.mk-anim.mk-cheer .mk-body, .mk-anim.mk-cheer .mk-shadow { animation-iteration-count: 4; }
+.mk-anim.mk-alert .mk-body { animation-iteration-count: 3; }
