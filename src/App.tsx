@@ -30,7 +30,7 @@ import { monthOf, todayISO } from './lib/dates';
 import { importCSV } from './lib/csv';
 import { openTextFile, saveTextFile } from './lib/files';
 import { sampleData } from './lib/sample';
-import { ConfirmHost, confirmDialog } from './components/Confirm';
+import { ConfirmHost, alertDialog, confirmDialog } from './components/Confirm';
 
 type TxDialog = { tx: Transaction | null; type: TxType; date?: string } | null;
 type TrDialog = { transfer: Transfer | null; from?: string; to?: string; date?: string } | null;
@@ -43,7 +43,7 @@ type SpaceDialog = { kind: 'new' } | { kind: 'join'; pack: SpacePack } | null;
 let lastPage: Page = 'overview';
 
 function Shell() {
-  const { data, update, space } = useStore();
+  const { data, update, replaceData, space, skipped, clearSkipped, saveError } = useStore();
   const [page, setPage] = useState<Page>(() => (lastPage === 'together' && !isShared(data) ? 'overview' : lastPage));
   const [spaceDialog, setSpaceDialog] = useState<SpaceDialog>(null);
   const [month, setMonth] = useState(monthOf(todayISO()));
@@ -62,6 +62,20 @@ function Shell() {
     const t = setTimeout(() => setToast(null), toast.kind === 'error' ? 6000 : 3200);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // The sidebar shows this too, but on phones it's behind the menu.
+  useEffect(() => {
+    if (saveError) showToast(`Couldn't save changes: ${saveError}`, 'error');
+  }, [saveError, showToast]);
+
+  useEffect(() => {
+    if (!skipped) return;
+    clearSkipped();
+    alertDialog({
+      title: 'Some entries couldn’t be read',
+      message: `Left out: ${skipped.join(', ')}. The original is kept in Settings, under Earlier copies, where you can save it as a file.`,
+    });
+  }, [skipped, clearSkipped]);
 
   const go = useCallback((p: Page) => {
     lastPage = p;
@@ -105,13 +119,18 @@ function Shell() {
     }
     if (
       data.transactions.length &&
-      !(await confirmDialog({ title: 'Load sample data?', message: 'This replaces all your current data with sample data. Export a backup first if you want to keep it.', confirmLabel: 'Replace my data', danger: true, icon: 'refresh' }))
+      !(await confirmDialog({ title: 'Load sample data?', message: 'This replaces all your current data with sample data. A copy is kept in Settings, under Earlier copies.', confirmLabel: 'Replace my data', danger: true, icon: 'refresh' }))
     )
       return;
-    update((d) => ({ ...sampleData(), notes: d.notes }));
+    try {
+      await replaceData((d) => ({ ...sampleData(), notes: d.notes }), 'sample');
+    } catch (err) {
+      showToast(`Nothing was changed: ${(err as Error).message}`, 'error');
+      return;
+    }
     setMonth(monthOf(todayISO()));
     showToast('Sample data loaded');
-  }, [data.transactions.length, update, showToast, space.kind]);
+  }, [data.transactions.length, replaceData, showToast, space.kind]);
 
   const ui: UI = useMemo(
     () => ({

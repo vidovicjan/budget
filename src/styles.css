@@ -1006,3 +1006,14 @@ button.acct-tile:hover { border-color: var(--input-border); background: var(--cr
 /* Big movements play a few times, then settle. */
 .mk-anim.mk-cheer .mk-body, .mk-anim.mk-cheer .mk-shadow { animation-iteration-count: 4; }
 .mk-anim.mk-alert .mk-body { animation-iteration-count: 3; }
+
+/* ---------- earlier copies, and the screen shown when data can't be loaded ---------- */
+
+.copy-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; max-height: 420px; overflow-y: auto; }
+.copy-list li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--cream-200); }
+.copy-list li:first-child { border-top: 0; }
+.copy-list strong { font-size: 14px; font-weight: 600; }
+.load-failure { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.load-failure .card { width: 100%; max-width: 680px; flex-shrink: 0; }
+.load-failure p { margin: 6px 0 0; line-height: 1.6; }
+.load-failure-actions { display: flex; flex-wrap: wrap; gap: 12px; }

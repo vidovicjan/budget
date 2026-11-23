@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { useUI } from '../ui';
-import { PageHeader, SelectBox } from '../components/common';
+import { Modal, PageHeader, SelectBox } from '../components/common';
 import { Icon } from '../components/Icon';
-import { accountBalance, emptyData, normalizeData, uid, shade } from '../lib/data';
+import { accountBalance, emptyData, readData, uid, shade } from '../lib/data';
 import { CURRENCIES, money, parseAmount, round2 } from '../lib/format';
 import { exportCSV } from '../lib/csv';
 import { openTextFile, saveTextFile } from '../lib/files';
@@ -14,6 +14,7 @@ import { useUpdate } from '../components/UpdateBanner';
 import { confirmDialog } from '../components/Confirm';
 import { Mascot } from '../components/Mascot';
 import { MASCOTS, mascotInfo } from '../lib/mascots';
+import { EarlierCopies } from '../components/EarlierCopies';
 
 function updateText(u: UpdateState): string {
   switch (u.status) {
@@ -35,10 +36,11 @@ function updateText(u: UpdateState): string {
 }
 
 export function Settings() {
-  const { data, update, workspace, setTheme, setMascot } = useStore();
+  const { data, update, replaceData, space, workspace, setTheme, setMascot } = useStore();
   const ui = useUI();
   const [newAccount, setNewAccount] = useState('');
   const [newKind, setNewKind] = useState<AccountKind>('cash');
+  const [copiesOpen, setCopiesOpen] = useState(false);
   const update_ = useUpdate();
   const mascot = mascotInfo(workspace.device.mascot);
 
@@ -85,16 +87,16 @@ export function Settings() {
     try {
       const file = await openTextFile(['json']);
       if (!file) return;
-      const restored = normalizeData(JSON.parse(file.content));
+      const { data: restored, skipped } = readData(JSON.parse(file.content));
       const ok = await confirmDialog({
         title: 'Restore this backup?',
-        message: `All current data in this space is replaced with “${file.name}” (${restored.transactions.length} transactions). This can’t be undone.`,
+        message: `All current data in this space is replaced with “${file.name}” (${restored.transactions.length} transactions).${skipped.length ? ` Can’t be read and left out: ${skipped.join(', ')}.` : ''} A copy of the current data is kept under Earlier copies.`,
         confirmLabel: 'Replace my data',
         danger: true,
         icon: 'refresh',
       });
       if (!ok) return;
-      update(() => restored);
+      await replaceData(() => restored, 'restore');
       ui.toast('Backup restored');
     } catch (err) {
       ui.toast(err instanceof SyntaxError ? 'That file is not valid JSON.' : String((err as Error).message || err), 'error');
@@ -102,16 +104,31 @@ export function Settings() {
   };
 
   const erase = async () => {
-    if (!(await confirmDialog({ title: 'Erase all data?', message: 'All transactions, categories, budgets and accounts are deleted. Export a backup first if you might need them. This can’t be undone.', confirmLabel: 'Erase everything', danger: true }))) return;
+    if (!(await confirmDialog({ title: 'Erase all data?', message: 'All transactions, categories, budgets and accounts in this space are deleted. Earlier copies are kept until you delete them there.', confirmLabel: 'Erase everything', danger: true }))) return;
     // Shared spaces keep their members (and currency); everything else is cleared.
-    update((d) => ({ ...emptyData(), members: d.members, settings: { ...emptyData().settings, currency: d.settings.currency } }));
-    ui.toast('All data erased');
+    try {
+      await replaceData((d) => ({ ...emptyData(), members: d.members, settings: { ...emptyData().settings, currency: d.settings.currency } }), 'erase');
+      ui.toast('All data erased');
+    } catch (err) {
+      ui.toast(`Nothing was erased: ${(err as Error).message}`, 'error');
+    }
   };
 
   const incomeCats = data.categories.filter((c) => c.type === 'income');
 
+  const restoreCopy = async (next: typeof data) => {
+    await replaceData(() => next, 'restore');
+    setCopiesOpen(false);
+    ui.toast('Earlier copy restored');
+  };
+
   return (
     <div className="container" style={{ maxWidth: 960 }}>
+      {copiesOpen && (
+        <Modal title="Earlier copies" onClose={() => setCopiesOpen(false)} width={640}>
+          <EarlierCopies spaceId={space.id} spaceName={space.name} onRestore={restoreCopy} onError={(m) => ui.toast(m, 'error')} canDelete />
+        </Modal>
+      )}
       <PageHeader eyebrow="Preferences and data" title="Settings" />
 
       <section className="card" aria-labelledby="general-title">
@@ -354,6 +371,17 @@ export function Settings() {
         </div>
         <div className="settings-row">
           <div className="stack">
+            <strong>Earlier copies</strong>
+            <span className="sub">
+              Kept automatically on this device: the last 7 days you used the app, and one before every restore, erase or sample load. Export backups as well; these are lost if this device is.
+            </span>
+          </div>
+          <button type="button" className="btn btn-secondary" onClick={() => setCopiesOpen(true)}>
+            <Icon name="refresh" size={16} /> Restore an earlier copy
+          </button>
+        </div>
+        <div className="settings-row">
+          <div className="stack">
             <strong>CSV</strong>
             <span className="sub">
               Import needs a header row with <b>Date</b> and <b>Amount</b>; Description, Category, Account, Type and Note are optional. Negative amounts are
@@ -386,7 +414,7 @@ export function Settings() {
             <h2 id="danger-title" className="card-title">
               Erase all data
             </h2>
-            <span className="sub">Removes everything stored on this device and starts fresh.</span>
+            <span className="sub">Clears this space and starts fresh. Earlier copies stay until you delete them there.</span>
           </div>
           <button type="button" className="btn btn-danger" onClick={erase}>
             <Icon name="trash" size={16} /> Erase everything

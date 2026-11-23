@@ -3,6 +3,7 @@ import { monthOf, todayISO } from './dates';
 import { occurrences } from './services';
 import { existingKeys, isRepeat, occurrenceKey, repeatDates } from './repeat';
 import { applyInterest } from './interest';
+import { COLLECTIONS } from '../sync/records';
 
 export const uid = () => crypto.randomUUID();
 
@@ -96,7 +97,7 @@ function readSplit(v: unknown): Split | undefined {
 /** Checks and cleans data loaded from storage or a backup file. Throws if it isn't Budget Tracker data. */
 export function normalizeData(raw: unknown): AppData {
   if (!isObj(raw) || !Array.isArray(raw.accounts) || !Array.isArray(raw.categories) || !Array.isArray(raw.transactions)) {
-    throw new Error('This file is not a Budget Tracker backup.');
+    throw new Error('It isn’t Budget Tracker data.');
   }
   const accounts: Account[] = raw.accounts.filter(isObj).map((a) => ({
     id: str(a.id) || uid(),
@@ -247,6 +248,31 @@ export function normalizeData(raw: unknown): AppData {
     transfers,
     deleted,
   };
+}
+
+export interface DataReport {
+  data: AppData;
+  /** Entries that can't be used and were left out, e.g. "2 transactions". */
+  skipped: string[];
+  /** True if `data` holds less than what was passed in. */
+  incomplete: boolean;
+}
+
+/** Like normalizeData, and says what had to be left out. */
+export function readData(raw: unknown): DataReport {
+  const data = normalizeData(raw);
+  const src = raw as Record<string, unknown>;
+  const skipped: string[] = [];
+  for (const col of COLLECTIONS) {
+    const list = src[col];
+    if (list === undefined || list === null) continue;
+    // Without a single usable account the defaults are filled in, so count those directly.
+    const lost = !Array.isArray(list) ? 1 : col === 'accounts' ? list.filter((v) => !isObj(v)).length : list.length - data[col].length;
+    if (lost > 0) skipped.push(`${lost} ${lost === 1 ? (col === 'categories' ? 'category' : col.slice(0, -1)) : col}`);
+  }
+  // Fields this version doesn't know come from a newer one.
+  const unknown = Object.keys(src).some((k) => !(k in data));
+  return { data, skipped, incomplete: skipped.length > 0 || unknown };
 }
 
 function readInterest(v: unknown): AccountInterest | null {
